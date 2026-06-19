@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
 st.set_page_config(layout="wide", page_title="Senti-Hormuz Dashboard")
 
@@ -245,6 +245,31 @@ with tab2:
                     
                     if len(results) > 1:
                         best_model = df_res.loc[df_res['Accuracy'].idxmax()]['Model']
+                        st.success(f"**Kesimpulan Pengujian:** Model **{best_model}** menghasilkan nilai akurasi tertinggi pada pembagian data {split_ratio}.")
+                else:
+                    st.warning("Silakan pilih minimal satu algoritma di atas.")
+    else:
+        st.warning("Status: Menunggu unggahan file dataset baru untuk pengujian.")
+True)
+                    
+                    st.markdown("##### **Confusion Matrix**")
+                    cols_cm = st.columns(len(results))
+                    for idx, res in enumerate(results):
+                        with cols_cm[idx]:
+                            st.write(f"**{res['Model']}**")
+                            fig_cm = px.imshow(
+                                res['cm'],
+                                text_auto=True,
+                                labels=dict(x="Prediksi", y="Aktual", color="Jumlah"),
+                                x=res['labels'],
+                                y=res['labels'],
+                                color_continuous_scale='Blues'
+                            )
+                            fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
+                            st.plotly_chart(fig_cm, use_container_width=True)
+                    
+                    if len(results) > 1:
+                        best_model = df_res_display.loc[df_res_display['Accuracy'].idxmax()]['Model']
                         st.success(f"**Kesimpulan Pengujian:** Model **{best_model}** menghasilkan nilai akurasi tertinggi pada pembagian data {split_ratio}.")
                 else:
                     st.warning("Silakan pilih minimal satu algoritma di atas.")
