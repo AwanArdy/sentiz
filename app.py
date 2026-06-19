@@ -193,19 +193,20 @@ with tab2:
             df_input = pd.read_csv(uploaded_file)
             
             with st.spinner("Memproses ekstraksi fitur TF-IDF dan pelatihan model..."):
-                # Menyesuaikan penamaan kolom secara spesifik dengan Hasil_Labelling_Data_Inset_Lax.csv
+                # Menyesuaikan penamaan kolom
                 col_t_teks = 'stopword removal' if 'stopword removal' in df_input.columns else 'stop removal'
                 col_t_sentimen = 'Sentiment' if 'Sentiment' in df_input.columns else 'sentiment'
                 
                 from sklearn.feature_extraction.text import TfidfVectorizer
                 vec_live = TfidfVectorizer()
                 
-                # Menggunakan fillna("") untuk mencegah error jika ada baris teks yang kosong (NaN) di file CSV
                 X = vec_live.fit_transform(df_input[col_t_teks].fillna("").astype(str))
                 y = df_input[col_t_sentimen]
                 
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_val, random_state=42)
                 
+                # Mengambil label unik untuk confusion matrix
+                labels = np.unique(y) 
                 results = []
                 
                 if use_svm:
@@ -217,7 +218,9 @@ with tab2:
                         "Accuracy": accuracy_score(y_test, y_pred),
                         "Precision": precision_score(y_test, y_pred, average='macro', zero_division=0),
                         "Recall": recall_score(y_test, y_pred, average='macro', zero_division=0),
-                        "F1-Score": f1_score(y_test, y_pred, average='macro', zero_division=0)
+                        "F1-Score": f1_score(y_test, y_pred, average='macro', zero_division=0),
+                        "cm": confusion_matrix(y_test, y_pred, labels=labels),
+                        "labels": labels
                     })
                     
                 if use_rf:
@@ -229,29 +232,23 @@ with tab2:
                         "Accuracy": accuracy_score(y_test, y_pred_rf),
                         "Precision": precision_score(y_test, y_pred_rf, average='macro', zero_division=0),
                         "Recall": recall_score(y_test, y_pred_rf, average='macro', zero_division=0),
-                        "F1-Score": f1_score(y_test, y_pred_rf, average='macro', zero_division=0)
+                        "F1-Score": f1_score(y_test, y_pred_rf, average='macro', zero_division=0),
+                        "cm": confusion_matrix(y_test, y_pred_rf, labels=labels),
+                        "labels": labels
                     })
                 
                 st.subheader("4. Hasil Evaluasi Kinerja")
                 if results:
+                    # 1. Tabel dan Bar Chart Evaluasi
                     df_res = pd.DataFrame(results)
-                    st.table(df_res.set_index("Model"))
+                    # Menghilangkan kolom 'cm' dan 'labels' saat ditampilkan di tabel agar rapi
+                    st.table(df_res.drop(columns=['cm', 'labels']).set_index("Model"))
                     
-                    df_melt = df_res.melt(id_vars="Model", var_name="Metrics", value_name="Score")
+                    df_melt = df_res.drop(columns=['cm', 'labels']).melt(id_vars="Model", var_name="Metrics", value_name="Score")
                     fig_bar = px.bar(df_melt, x="Metrics", y="Score", color="Model", barmode="group", text_auto=".2f")
+                    st.plotly_chart(fig_bar, use_container_width=True)
                     
-                    # Mengubah use_container_width=True menjadi width='stretch' agar tidak memunculkan warning kuning
-                    st.plotly_chart(fig_bar, width='stretch')
-                    
-                    if len(results) > 1:
-                        best_model = df_res.loc[df_res['Accuracy'].idxmax()]['Model']
-                        st.success(f"**Kesimpulan Pengujian:** Model **{best_model}** menghasilkan nilai akurasi tertinggi pada pembagian data {split_ratio}.")
-                else:
-                    st.warning("Silakan pilih minimal satu algoritma di atas.")
-    else:
-        st.warning("Status: Menunggu unggahan file dataset baru untuk pengujian.")
-True)
-                    
+                    # 2. Confusion Matrix
                     st.markdown("##### **Confusion Matrix**")
                     cols_cm = st.columns(len(results))
                     for idx, res in enumerate(results):
@@ -268,8 +265,9 @@ True)
                             fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
                             st.plotly_chart(fig_cm, use_container_width=True)
                     
+                    # 3. Kesimpulan
                     if len(results) > 1:
-                        best_model = df_res_display.loc[df_res_display['Accuracy'].idxmax()]['Model']
+                        best_model = df_res.loc[df_res['Accuracy'].idxmax()]['Model']
                         st.success(f"**Kesimpulan Pengujian:** Model **{best_model}** menghasilkan nilai akurasi tertinggi pada pembagian data {split_ratio}.")
                 else:
                     st.warning("Silakan pilih minimal satu algoritma di atas.")
