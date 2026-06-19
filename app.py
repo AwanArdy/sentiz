@@ -239,15 +239,6 @@ with tab2:
                 
                 st.subheader("4. Hasil Evaluasi Kinerja")
                 if results:
-                    # 1. Tabel dan Bar Chart Evaluasi
-                    df_res = pd.DataFrame(results)
-                    # Menghilangkan kolom 'cm' dan 'labels' saat ditampilkan di tabel agar rapi
-                    st.table(df_res.drop(columns=['cm', 'labels']).set_index("Model"))
-                    
-                    df_melt = df_res.drop(columns=['cm', 'labels']).melt(id_vars="Model", var_name="Metrics", value_name="Score")
-                    fig_bar = px.bar(df_melt, x="Metrics", y="Score", color="Model", barmode="group", text_auto=".2f")
-                    st.plotly_chart(fig_bar, use_container_width=True)
-                    
                     # 2. Confusion Matrix
                     st.markdown("##### **Confusion Matrix**")
                     cols_cm = st.columns(len(results))
@@ -264,6 +255,16 @@ with tab2:
                             )
                             fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
                             st.plotly_chart(fig_cm, use_container_width=True)
+                            
+                    # 1. Tabel dan Bar Chart Evaluasi
+                    df_res = pd.DataFrame(results)
+                    # Menghilangkan kolom 'cm' dan 'labels' saat ditampilkan di tabel agar rapi
+                    st.table(df_res.drop(columns=['cm', 'labels']).set_index("Model"))
+                    
+                    df_melt = df_res.drop(columns=['cm', 'labels']).melt(id_vars="Model", var_name="Metrics", value_name="Score")
+                    fig_bar = px.bar(df_melt, x="Metrics", y="Score", color="Model", barmode="group", text_auto=".2f")
+                    st.plotly_chart(fig_bar, use_container_width=True)
+                    
                     
                     # 3. Kesimpulan
                     if len(results) > 1:
