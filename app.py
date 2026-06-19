@@ -256,6 +256,13 @@ with tab2:
                             fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
                             st.plotly_chart(fig_cm, use_container_width=True)
 
+                            df_cm_tabel = pd.DataFrame(
+                                res['cm'],
+                                index=[f"Aktual: {l}" for l in res['labels']],
+                                columns=[f"Prediksi: {l}" for l in res['labels']]
+                            )
+                            st.table(df_cm_tabel)
+
                     # 1. Tabel dan Bar Chart Evaluasi
                     st.markdown("##### **Classification Report**")
                     df_res = pd.DataFrame(results)
