@@ -255,8 +255,9 @@ with tab2:
                             )
                             fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
                             st.plotly_chart(fig_cm, use_container_width=True)
-                            
+
                     # 1. Tabel dan Bar Chart Evaluasi
+                    st.markdown("##### **Classification Report**")
                     df_res = pd.DataFrame(results)
                     # Menghilangkan kolom 'cm' dan 'labels' saat ditampilkan di tabel agar rapi
                     st.table(df_res.drop(columns=['cm', 'labels']).set_index("Model"))
