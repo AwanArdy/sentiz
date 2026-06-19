@@ -241,6 +241,16 @@ with tab2:
                 if results:
                     # 2. Confusion Matrix
                     st.markdown("##### **Confusion Matrix**")
+                    fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
+                    st.plotly_chart(fig_cm, use_container_width=True)
+
+                    df_cm_tabel = pd.DataFrame(
+                        res['cm'],
+                        index=[f"Aktual: {l}" for l in res['labels']],
+                        columns=[f"Prediksi: {l}" for l in res['labels']]
+                    )
+                    st.table(df_cm_tabel)
+                    
                     cols_cm = st.columns(len(results))
                     for idx, res in enumerate(results):
                         with cols_cm[idx]:
@@ -253,15 +263,6 @@ with tab2:
                                 y=res['labels'],
                                 color_continuous_scale='Blues'
                             )
-                            fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
-                            st.plotly_chart(fig_cm, use_container_width=True)
-
-                            df_cm_tabel = pd.DataFrame(
-                                res['cm'],
-                                index=[f"Aktual: {l}" for l in res['labels']],
-                                columns=[f"Prediksi: {l}" for l in res['labels']]
-                            )
-                            st.table(df_cm_tabel)
 
                     # 1. Tabel dan Bar Chart Evaluasi
                     st.markdown("##### **Classification Report**")
