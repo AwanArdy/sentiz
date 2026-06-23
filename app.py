@@ -198,7 +198,7 @@ with tab2:
         if st.button("Jalankan Analisis Komparatif", type="primary"):
             df_input = pd.read_csv(uploaded_file)
             
-            with st.spinner(f"Memproses evaluasi dengan metode {eval_method}..."):
+            with st.spinner(f"Menjalankan analisis..."):
                 # Menyesuaikan penamaan kolom & sentimen
                 col_t_teks = 'stopword removal' if 'stopword removal' in df_input.columns else 'stop removal'
                 col_t_sentimen = 'Sentiment' if 'Sentiment' in df_input.columns else 'sentiment'
