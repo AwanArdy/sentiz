@@ -262,7 +262,7 @@ with tab2:
                         with cols_cm[idx]:
                             st.write(f"**{res['Model']}**")
                             fig_cm = px.imshow(
-                                rs['cm'],
+                                res['cm'],
                                 text_auto=True,
                                 labels=dict(x="Prediksi", y="Aktual", color="Jumlah"),
                                 x=res['labels'],
