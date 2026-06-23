@@ -224,7 +224,7 @@ with tab2:
                 if use_svm:
                     models_to_run["Support Vector Machine"] = SVC(C=10, kernel='linear', gamma='scale', random_state=42)
                 if use_rf:
-                    models_to_run["Random Forest"] = RandomForestClassifier(n_estimator=200, max_depth=None, min_samples_split=5, random_state=42)
+                    models_to_run["Random Forest"] = RandomForestClassifier(n_estimators=200, max_depth=None, min_samples_split=5, random_state=42)
 
                 results = []
     
