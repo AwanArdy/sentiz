@@ -191,10 +191,6 @@ with tab2:
             ratio_map = {"90:10": 0.1, "80:20": 0.2, "70:30": 0.3}
             test_size_val = ratio_map[split_ratio]
 
-        split_ratio = st.radio("Rasio Data Pengujian", ("90:10", "80:20", "70:30"), index=1)
-        ratio_map = {"90:10": 0.1, "80:20": 0.2, "70:30": 0.3}
-        test_size_val = ratio_map[split_ratio]
-
     st.subheader("3. Status")
     if uploaded_file is not None:
         st.info("Status: Dataset siap dianalisis secara live.")
