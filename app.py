@@ -209,7 +209,7 @@ with tab2:
                 
                 # Hanya mengambil data, tidak langsung fit_transform untuk menghindari data leakage
                 X = df_input[col_t_teks].fillna("").astype(str)
-                y = df.input[col_t_sentimen]
+                y = df_input[col_t_sentimen]
                 labels = np.unique(y)
 
                 # Fungsi membuat pipeline (TF-IDF -> SMOTE -> Algoritma)
