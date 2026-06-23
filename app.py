@@ -298,10 +298,39 @@ with tab2:
                     st.plotly_chart(fig_bar, use_container_width=True)
 
                     # Kesimpulan
-                    if len(results) > 1:
-                        best_model = df_res.loc[df_res['Accuracy'].idxmax()]['Model']
-                        eval_text = f"pembagian data {split_ratio}" if eval_method == "Train-Test Split" else "Stratified 5-Fold Cross Validation"
-                        st.success(f"**Kesimpulan Pengujian:** Model **{best_model}** menghasilkan nilai akurasi tertinggi menggunakan metode evaluasi {eval_text}.")
+                    st.write("---")
+                    st.markdown("##### **📝 Kesimpulan Pengujian Detail**")
+                    
+                    if results:
+                        eval_text = f"pembagian data **{split_ratio}**" if eval_method == "Train-Test Split" else "**Stratified 5-Fold Cross Validation**"
+                        
+                        # Mengambil data model terbaik berdasarkan Akurasi
+                        best_idx = df_res['Accuracy'].idxmax()
+                        best_model_name = df_res.loc[best_idx]['Model']
+                        best_accuracy = df_res.loc[best_idx]['Accuracy'] * 100
+                        
+                        # 1. Kotak Pengumuman Utama (Highlight Model Terbaik)
+                        st.success(f"**Model Terbaik:** Berdasarkan hasil pengujian menggunakan metode {eval_text}, model **{best_model_name}** secara keseluruhan memiliki performa terbaik dengan tingkat akurasi sebesar **{best_accuracy:.2f}%**.")
+                        
+                        # 2. Rincian Metrik Per Model dalam bentuk Poin/List
+                        st.markdown("**Rincian Perbandingan Performa Seluruh Model:**")
+                        
+                        # Membuat kolom agar tampilan rincian berdampingan jika ada 2 model
+                        cols_detail = st.columns(len(results))
+                        
+                        for idx, row in df_res.iterrows():
+                            with cols_detail[idx]:
+                                st.markdown(f"""
+                                <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                                    <h6 style="color: #1e3a8a; margin-top: 0;"><b>📊 {row['Model']}</b></h6>
+                                    <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
+                                        <li>🔹 <b>Akurasi:</b> <code style="color: #1e3a8a;">{row['Accuracy']*100:.2f}%</code></li>
+                                        <li>🔹 <b>Precision:</b> <code>{row['Precision']*100:.2f}%</code></li>
+                                        <li>🔹 <b>Recall:</b> <code>{row['Recall']*100:.2f}%</code></li>
+                                        <li>🔹 <b>F1-Score:</b> <code>{row['F1-Score']*100:.2f}%</code></li>
+                                    </ul>
+                                </div>
+                                """, unsafe_allow_html=True)
                 else:
                     st.warning("Silakan pilih minimal satu algoritma di atas.")
     else:
