@@ -191,14 +191,14 @@ with tab2:
             ratio_map = {"90:10": 0.1, "80:20": 0.2, "70:30": 0.3}
             test_size_val = ratio_map[split_ratio]
 
-    st.subheader("3. Status")
+    st.subheader("3. Menjalankan Analisis")
     if uploaded_file is not None:
         st.info("Status: Dataset siap dianalisis secara live.")
         
         if st.button("Jalankan Analisis Komparatif", type="primary"):
             df_input = pd.read_csv(uploaded_file)
             
-            with st.spinner(f"Menjalankan analisis..."):
+            with st.spinner(f"Memproses evaluasi dengan metode {eval_method}..."):
                 # Menyesuaikan penamaan kolom & sentimen
                 col_t_teks = 'stopword removal' if 'stopword removal' in df_input.columns else 'stop removal'
                 col_t_sentimen = 'Sentiment' if 'Sentiment' in df_input.columns else 'sentiment'
