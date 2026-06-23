@@ -238,7 +238,7 @@ with tab2:
                         y_actual = y_test
 
                     elif eval_method == "Stratified 5-Fold CV":
-                        skf = StratifiedKFold(n_split=5, shuffle=True, random_state=42)
+                        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
                         y_pred = cross_val_predict(pipeline, X, y, cv=skf, n_jobs=1)
                         y_actual = y
 
