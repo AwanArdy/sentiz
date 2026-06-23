@@ -257,6 +257,15 @@ with tab2:
                     for idx, res in enumerate(results):
                         with cols_cm[idx]:
                             st.write(f"**{res['Model']}**")
+
+                            df_cm_table = pd.DataFrame(
+                                res['cm'],
+                                index=[f"Aktual {l}" for l in res['labels']],
+                                columns=[f"Prediksi {l}" for l in res['labels']]
+                            )
+
+                            st.tabel(df_cm_table)
+
                             fig_cm = px.imshow(
                                 res['cm'],
                                 text_auto=True,
