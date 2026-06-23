@@ -299,7 +299,7 @@ with tab2:
 
                     # Kesimpulan
                     st.write("---")
-                    st.markdown("##### **📝 Kesimpulan Pengujian Detail**")
+                    st.markdown("##### **Kesimpulan Pengujian**")
                     
                     if results:
                         eval_text = f"pembagian data **{split_ratio}**" if eval_method == "Train-Test Split" else "**Stratified 5-Fold Cross Validation**"
@@ -322,7 +322,7 @@ with tab2:
                             with cols_detail[idx]:
                                 st.markdown(f"""
                                 <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                                    <h6 style="color: #1e3a8a; margin-top: 0;"><b>📊 {row['Model']}</b></h6>
+                                    <h6 style="color: #1e3a8a; margin-top: 0;"><b>{row['Model']}</b></h6>
                                     <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
                                         <li>🔹 <b>Akurasi:</b> <code style="color: #1e3a8a;">{row['Accuracy']*100:.2f}%</code></li>
                                         <li>🔹 <b>Precision:</b> <code>{row['Precision']*100:.2f}%</code></li>
