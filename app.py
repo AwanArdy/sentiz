@@ -73,7 +73,7 @@ with col_head2:
     st.write(f"<div style='text-align: right; color: gray;'>● Online</div>", unsafe_allow_html=True)
 
 # NAVIGASI TABS
-tab1, tab2 = st.tabs(["DASHBOARD", "INPUT, ANALISIS & EVALUASI"])
+tab1, tab2 = st.tabs(["Beranda", "Klasifikasi Data"])
 
 # Tab 1 : Dashboard Global
 with tab1:
