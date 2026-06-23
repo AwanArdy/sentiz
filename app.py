@@ -282,7 +282,18 @@ with tab2:
                     st.table(df_res.drop(columns=['cm', 'labels']).set_index("Model"))
 
                     df_melt = df_res.drop(columns=['cm', 'labels']).melt(id_vars="Model", var_name="Metrics", value_name="Score")
-                    fig_bar = px.bar(df_melt, x="Metrics", y="Score", color="Model", barmode="group", text_auto=".2f")
+                    fig_bar = px.bar(
+                        df_melt,
+                        x="Metrics",
+                        y="Score",
+                        color="Model",
+                        barmode="group",
+                        text_auto=".2f",
+                        color_discrete_map={
+                            'Support Vector Machine': '#1f77b4',
+                            'Random Forest': '#ff7f0e'
+                        }
+                    )
                     fig_bar.update_layout(yaxis_range=[0, 1.1])
                     st.plotly_chart(fig_bar, use_container_width=True)
 
