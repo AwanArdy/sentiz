@@ -6,10 +6,13 @@ import plotly.express as px
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.svm import LinearSVC
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_predict
+from sklearn.svm import SVC
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
 
 st.set_page_config(layout="wide", page_title="Senti-Hormuz Dashboard")
 
@@ -172,15 +175,22 @@ with tab2:
     uploaded_file = st.file_uploader("Pilih file dataset baru (.csv)", type=["csv"])
     
     st.subheader("2. Pengaturan Analisis")
-    col_algo, col_split = st.columns(2)
+    col_algo, col_eval = st.columns(2)
     
     with col_algo:
         st.markdown("**Pilih Algoritma**")
-        use_svm = st.checkbox("Support Vector Machine (LinearSVC)", value=True)
+        use_svm = st.checkbox("Support Vector Machine (SVC)", value=True)
         use_rf = st.checkbox("Random Forest")
         
-    with col_split:
-        st.markdown("**Pembagian Data (Train:Test)**")
+    with col_eval:
+        st.markdown("**Metode Evaluasi**")
+        eval_method = st.radio("Pilih Metode Pengujian", ("Train-Test Split", "Stratified 5-Fold CV"), index=0)
+
+        if eval_method == "Train-Test Split":
+            split_ratio = st.selectbox("Rasio Data Pengujian", ("90:10", "80:20", "70:30"), index=1)
+            ratio_map = {"90:10": 0.1, "80:20": 0.2, "70:30": 0.3}
+            test_size_val = ratio_map[split_ratio]
+
         split_ratio = st.radio("Rasio Data Pengujian", ("90:10", "80:20", "70:30"), index=1)
         ratio_map = {"90:10": 0.1, "80:20": 0.2, "70:30": 0.3}
         test_size_val = ratio_map[split_ratio]
@@ -192,68 +202,67 @@ with tab2:
         if st.button("Jalankan Analisis Komparatif", type="primary"):
             df_input = pd.read_csv(uploaded_file)
             
-            with st.spinner("Memproses ekstraksi fitur TF-IDF dan pelatihan model..."):
-                # Menyesuaikan penamaan kolom
+            with st.spinner("Memproses evaluasi dengan metode {eval_method}..."):
+                # Menyesuaikan penamaan kolom & sentimen
                 col_t_teks = 'stopword removal' if 'stopword removal' in df_input.columns else 'stop removal'
                 col_t_sentimen = 'Sentiment' if 'Sentiment' in df_input.columns else 'sentiment'
                 
-                from sklearn.feature_extraction.text import TfidfVectorizer
-                vec_live = TfidfVectorizer()
-                
-                X = vec_live.fit_transform(df_input[col_t_teks].fillna("").astype(str))
-                y = df_input[col_t_sentimen]
-                
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_val, random_state=42)
-                
-                # Mengambil label unik untuk confusion matrix
-                labels = np.unique(y) 
-                results = []
-                
+                # Hanya mengambil data, tidak langsung fit_transform untuk menghindari data leakage
+                X = df_input[col_t_teks].fillna("").astype(str)
+                y = df.input[col_t_sentimen]
+                labels = np.unique(y)
+
+                # Fungsi membuat pipeline (TF-IDF -> SMOTE -> Algoritma)
+                def create_pipeline(model):
+                    return ImbPipeline([
+                        ('tfidf', TfidfVectorizer(max_features=5000, ngram_range=(1,2))),
+                        ('smote', SMOTE(random_state=42)),
+                        ('model', model)
+                    ])
+
+                models_to_run = {}
                 if use_svm:
-                    clf_svm = LinearSVC()
-                    clf_svm.fit(X_train, y_train)
-                    y_pred = clf_svm.predict(X_test)
-                    results.append({
-                        "Model": "Support Vector Machine",
-                        "Accuracy": accuracy_score(y_test, y_pred),
-                        "Precision": precision_score(y_test, y_pred, average='macro', zero_division=0),
-                        "Recall": recall_score(y_test, y_pred, average='macro', zero_division=0),
-                        "F1-Score": f1_score(y_test, y_pred, average='macro', zero_division=0),
-                        "cm": confusion_matrix(y_test, y_pred, labels=labels),
-                        "labels": labels
-                    })
-                    
+                    models_to_run["Support Vector Machine"] = SVC(C=10, kernel='linear', gamma='scale', random_state=42)
                 if use_rf:
-                    clf_rf = RandomForestClassifier(random_state=42)
-                    clf_rf.fit(X_train, y_train)
-                    y_pred_rf = clf_rf.predict(X_test)
+                    models_to_run["Random Forest"] = RandomForestClassifier(n_estimator=200, max_depth=None, min_samples_split=5, random_state=42)
+
+                results = []
+    
+                for model_name, model_obj in models_to_run.items():
+                    pipeline = create_pipeline(model_obj)
+
+                    if eval_method == "Train-Test Split":
+                        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_val, random_state=42, stratify=y)
+                        pipeline.fit(X_train, y_train)
+                        y_pred = pipeline.predict(X_test)
+                        y_actual = y_test
+
+                    elif eval_method == "Stratified 5-Fold CV":
+                        skf = StratifiedKFold(n_split=5, shuffle=True, random_state=42)
+                        y_pred = cross_val_predict(pipeline, X, y, cv=skf, n_jobs=1)
+                        y_actual = y
+
+                    # Mengkalkulasi matriks evaluasi
                     results.append({
-                        "Model": "Random Forest",
-                        "Accuracy": accuracy_score(y_test, y_pred_rf),
-                        "Precision": precision_score(y_test, y_pred_rf, average='macro', zero_division=0),
-                        "Recall": recall_score(y_test, y_pred_rf, average='macro', zero_division=0),
-                        "F1-Score": f1_score(y_test, y_pred_rf, average='macro', zero_division=0),
-                        "cm": confusion_matrix(y_test, y_pred_rf, labels=labels),
+                        "Model": model_name,
+                        "Accuracy": accuracy_score(y_actual, y_pred),
+                        "Precision": precision_score(y_actual, y_pred, average='macro', zero_division=0),
+                        "Recall": recall_score(y_actual, y_pred, average='macro', zero_division=0),
+                        "F1-Score": f1_score(y_actual, y_pred, average='macro', zero_division=0),
+                        "cm": confusion_matrix(y_actual, y_pred, labels=labels),
                         "labels": labels
                     })
-                
+
                 st.subheader("4. Hasil Evaluasi Kinerja")
                 if results:
-                    # 2. Confusion Matrix
+                    # Tampilkan Confusion Matrix
                     st.markdown("##### **Confusion Matrix**")
                     cols_cm = st.columns(len(results))
                     for idx, res in enumerate(results):
                         with cols_cm[idx]:
                             st.write(f"**{res['Model']}**")
-                            df_cm_tabel = pd.DataFrame(
-                                res['cm'],
-                                index=[f"Aktual: {l}" for l in res['labels']],
-                                columns=[f"Prediksi: {l}" for l in res['labels']]
-                            )
-                            st.table(df_cm_tabel)
-                            
                             fig_cm = px.imshow(
-                                res['cm'],
+                                rs['cm'],
                                 text_auto=True,
                                 labels=dict(x="Prediksi", y="Aktual", color="Jumlah"),
                                 x=res['labels'],
@@ -263,22 +272,20 @@ with tab2:
                             fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
                             st.plotly_chart(fig_cm, use_container_width=True)
 
-
-                    # 1. Tabel dan Bar Chart Evaluasi
                     st.markdown("##### **Classification Report**")
                     df_res = pd.DataFrame(results)
-                    # Menghilangkan kolom 'cm' dan 'labels' saat ditampilkan di tabel agar rapi
                     st.table(df_res.drop(columns=['cm', 'labels']).set_index("Model"))
-                    
+
                     df_melt = df_res.drop(columns=['cm', 'labels']).melt(id_vars="Model", var_name="Metrics", value_name="Score")
                     fig_bar = px.bar(df_melt, x="Metrics", y="Score", color="Model", barmode="group", text_auto=".2f")
+                    fig_bar.update_layout(yaxis_range=[0, 1.1])
                     st.plotly_chart(fig_bar, use_container_width=True)
-                    
-                    
-                    # 3. Kesimpulan
+
+                    # Kesimpulan
                     if len(results) > 1:
                         best_model = df_res.loc[df_res['Accuracy'].idxmax()]['Model']
-                        st.success(f"**Kesimpulan Pengujian:** Model **{best_model}** menghasilkan nilai akurasi tertinggi pada pembagian data {split_ratio}.")
+                        eval_text = f"pembagian data {split_ratio}" if eval_method == "Train-Test Split" else "Stratified 5-Fold Cross Validation"
+                        st.success(f"**Kesimpulan Pengujian:** Model **{best_model}** menghasilkan nilai akurasi tertinggi menggunakan metode evaluasi {eval_text}.")
                 else:
                     st.warning("Silakan pilih minimal satu algoritma di atas.")
     else:
