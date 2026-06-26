@@ -173,37 +173,19 @@ with tab1:
 with tab2:
     st.subheader("1. Input Data")
     uploaded_file = st.file_uploader("Pilih file dataset baru (.csv)", type=["csv"])
-    
-    st.subheader("2. Pengaturan Analisis")
-    col_algo, col_eval = st.columns(2)
-    
-    with col_algo:
-        st.markdown("**Pilih Algoritma**")
-        use_svm = st.checkbox("Support Vector Machine (SVC)", value=True)
-        use_rf = st.checkbox("Random Forest")
-        
-    with col_eval:
-        st.markdown("**Metode Evaluasi**")
-        eval_method = st.radio("Pilih Metode Pengujian", ("Train-Test Split", "Stratified 5-Fold CV"), index=0)
 
-        if eval_method == "Train-Test Split":
-            split_ratio = st.selectbox("Rasio Data Pengujian", ("90:10", "80:20", "70:30"), index=1)
-            ratio_map = {"90:10": 0.1, "80:20": 0.2, "70:30": 0.3}
-            test_size_val = ratio_map[split_ratio]
-
-    st.subheader("3. Menjalankan Analisis")
+    st.subheader("2. Menjalankan Analisis")
     if uploaded_file is not None:
         st.info("Status: Dataset siap dianalisis secara live.")
-        
+
         if st.button("Jalankan Analisis Komparatif", type="primary"):
             df_input = pd.read_csv(uploaded_file)
-            
-            with st.spinner(f"Memproses evaluasi dengan metode {eval_method}..."):
+
+            with st.spinner("Memproses evaluasi seluruh skenario (SVM & Random Forest, Train-Test Split & Stratified 5-Fold CV)..."):
                 # Menyesuaikan penamaan kolom & sentimen
                 col_t_teks = 'stopword removal' if 'stopword removal' in df_input.columns else 'stop removal'
                 col_t_sentimen = 'Sentiment' if 'Sentiment' in df_input.columns else 'sentiment'
-                
-                # Hanya mengambil data, tidak langsung fit_transform untuk menghindari data leakage
+
                 X = df_input[col_t_teks].fillna("").astype(str)
                 y = df_input[col_t_sentimen]
                 labels = np.unique(y)
@@ -216,122 +198,149 @@ with tab2:
                         ('model', model)
                     ])
 
-                models_to_run = {}
-                if use_svm:
-                    models_to_run["Support Vector Machine"] = SVC(C=10, kernel='linear', gamma='scale', random_state=42)
-                if use_rf:
-                    models_to_run["Random Forest"] = RandomForestClassifier(n_estimators=200, max_depth=None, min_samples_split=5, random_state=42)
+                # Seluruh algoritma & metode evaluasi dijalankan otomatis (tanpa perlu dipilih user)
+                models_to_run = {
+                    "Support Vector Machine": SVC(C=10, kernel='linear', gamma='scale', random_state=42),
+                    "Random Forest": RandomForestClassifier(n_estimators=200, max_depth=None, min_samples_split=5, random_state=42)
+                }
+
+                ratio_map = {"Skenario 90:10": 0.1, "Skenario 80:20": 0.2, "Skenario 70:30": 0.3}
 
                 results = []
-    
-                for model_name, model_obj in models_to_run.items():
-                    pipeline = create_pipeline(model_obj)
 
-                    if eval_method == "Train-Test Split":
-                        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_val, random_state=42, stratify=y)
+                # --- Skenario Train-Test Split (90:10, 80:20, 70:30) ---
+                for skenario_nama, test_size_val in ratio_map.items():
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        X, y, test_size=test_size_val, random_state=42, stratify=y
+                    )
+                    for model_name, model_obj in models_to_run.items():
+                        pipeline = create_pipeline(model_obj)
                         pipeline.fit(X_train, y_train)
                         y_pred = pipeline.predict(X_test)
-                        y_actual = y_test
 
-                    elif eval_method == "Stratified 5-Fold CV":
-                        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-                        y_pred = cross_val_predict(pipeline, X, y, cv=skf, n_jobs=1)
-                        y_actual = y
+                        results.append({
+                            "Skenario": skenario_nama,
+                            "Model": model_name,
+                            "Accuracy": accuracy_score(y_test, y_pred),
+                            "Precision": precision_score(y_test, y_pred, average='macro', zero_division=0),
+                            "Recall": recall_score(y_test, y_pred, average='macro', zero_division=0),
+                            "F1-Score": f1_score(y_test, y_pred, average='macro', zero_division=0),
+                            "cm": confusion_matrix(y_test, y_pred, labels=labels),
+                            "labels": labels
+                        })
 
-                    # Mengkalkulasi matriks evaluasi
+                # --- Skenario Stratified 5-Fold CV (memakai seluruh data) ---
+                skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+                for model_name, model_obj in models_to_run.items():
+                    pipeline = create_pipeline(model_obj)
+                    y_pred = cross_val_predict(pipeline, X, y, cv=skf, n_jobs=1)
+
                     results.append({
+                        "Skenario": "Stratified 5-Fold CV",
                         "Model": model_name,
-                        "Accuracy": accuracy_score(y_actual, y_pred),
-                        "Precision": precision_score(y_actual, y_pred, average='macro', zero_division=0),
-                        "Recall": recall_score(y_actual, y_pred, average='macro', zero_division=0),
-                        "F1-Score": f1_score(y_actual, y_pred, average='macro', zero_division=0),
-                        "cm": confusion_matrix(y_actual, y_pred, labels=labels),
+                        "Accuracy": accuracy_score(y, y_pred),
+                        "Precision": precision_score(y, y_pred, average='macro', zero_division=0),
+                        "Recall": recall_score(y, y_pred, average='macro', zero_division=0),
+                        "F1-Score": f1_score(y, y_pred, average='macro', zero_division=0),
+                        "cm": confusion_matrix(y, y_pred, labels=labels),
                         "labels": labels
                     })
 
-                st.subheader("4. Hasil Evaluasi Kinerja")
-                if results:
-                    # Tampilkan Confusion Matrix
-                    st.markdown("##### **Confusion Matrix**")
-                    cols_cm = st.columns(len(results))
-                    for idx, res in enumerate(results):
-                        with cols_cm[idx]:
-                            st.write(f"**{res['Model']}**")
+            # Simpan ke session_state supaya hasil tidak hilang saat interaksi lain (mis. pilih skenario CM)
+            st.session_state['app_results'] = results
+            st.session_state['app_labels'] = labels
 
-                            df_cm_table = pd.DataFrame(
-                                res['cm'],
-                                index=[f"Aktual {l}" for l in res['labels']],
-                                columns=[f"Prediksi {l}" for l in res['labels']]
-                            )
+        # Tampilkan hasil kalau analisis sudah pernah dijalankan
+        if 'app_results' in st.session_state:
+            results = st.session_state['app_results']
+            labels = st.session_state['app_labels']
 
-                            st.table(df_cm_table)
+            st.subheader("3. Hasil Evaluasi Kinerja")
 
-                            fig_cm = px.imshow(
-                                res['cm'],
-                                text_auto=True,
-                                labels=dict(x="Prediksi", y="Aktual", color="Jumlah"),
-                                x=res['labels'],
-                                y=res['labels'],
-                                color_continuous_scale='Blues'
-                            )
-                            fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
-                            st.plotly_chart(fig_cm, use_container_width=True)
+            df_res = pd.DataFrame(results)
+            df_res_tampil = df_res.drop(columns=['cm', 'labels'])
 
-                    st.markdown("##### **Classification Report**")
-                    df_res = pd.DataFrame(results)
-                    st.table(df_res.drop(columns=['cm', 'labels']).set_index("Model"))
+            st.markdown("##### **Ringkasan Seluruh Skenario & Algoritma**")
+            st.table(df_res_tampil.set_index(["Skenario", "Model"]))
 
-                    df_melt = df_res.drop(columns=['cm', 'labels']).melt(id_vars="Model", var_name="Metrics", value_name="Score")
-                    fig_bar = px.bar(
-                        df_melt,
-                        x="Metrics",
-                        y="Score",
-                        color="Model",
-                        barmode="group",
-                        text_auto=".2f",
-                        color_discrete_map={
-                            'Support Vector Machine': '#1f77b4',
-                            'Random Forest': '#ff7f0e'
-                        }
+            # Grafik perbandingan akurasi seluruh kombinasi skenario x model
+            fig_bar = px.bar(
+                df_res_tampil,
+                x="Skenario",
+                y="Accuracy",
+                color="Model",
+                barmode="group",
+                text_auto=".2f",
+                color_discrete_map={
+                    'Support Vector Machine': '#1f77b4',
+                    'Random Forest': '#ff7f0e'
+                }
+            )
+            fig_bar.update_layout(yaxis_range=[0, 1.1], yaxis_title="Accuracy")
+            st.plotly_chart(fig_bar, use_container_width=True)
+
+            # Confusion Matrix per skenario (dipilih lewat dropdown agar tidak terlalu padat)
+            st.markdown("##### **Confusion Matrix**")
+            skenario_pilihan = st.selectbox(
+                "Pilih Skenario untuk Lihat Confusion Matrix",
+                df_res['Skenario'].unique()
+            )
+            hasil_skenario = [r for r in results if r['Skenario'] == skenario_pilihan]
+
+            cols_cm = st.columns(len(hasil_skenario))
+            for idx, res in enumerate(hasil_skenario):
+                with cols_cm[idx]:
+                    st.write(f"**{res['Model']}**")
+
+                    df_cm_table = pd.DataFrame(
+                        res['cm'],
+                        index=[f"Aktual {l}" for l in res['labels']],
+                        columns=[f"Prediksi {l}" for l in res['labels']]
                     )
-                    fig_bar.update_layout(yaxis_range=[0, 1.1])
-                    st.plotly_chart(fig_bar, use_container_width=True)
+                    st.table(df_cm_table)
 
-                    # Kesimpulan
-                    st.write("---")
-                    st.markdown("##### **Kesimpulan Pengujian**")
-                    
-                    if results:
-                        eval_text = f"pembagian data **{split_ratio}**" if eval_method == "Train-Test Split" else "**Stratified 5-Fold Cross Validation**"
-                        
-                        # Mengambil data model terbaik berdasarkan Akurasi
-                        best_idx = df_res['Accuracy'].idxmax()
-                        best_model_name = df_res.loc[best_idx]['Model']
-                        best_accuracy = df_res.loc[best_idx]['Accuracy'] * 100
-                        
-                        # 1. Kotak Pengumuman Utama (Highlight Model Terbaik)
-                        st.success(f"**Model Terbaik:** Berdasarkan hasil pengujian menggunakan metode {eval_text}, model **{best_model_name}** secara keseluruhan memiliki performa terbaik dengan tingkat akurasi sebesar **{best_accuracy:.2f}%**.")
-                        
-                        # 2. Rincian Metrik Per Model dalam bentuk Poin/List
-                        st.markdown("**Rincian Perbandingan Performa Seluruh Model:**")
-                        
-                        # Membuat kolom agar tampilan rincian berdampingan jika ada 2 model
-                        cols_detail = st.columns(len(results))
-                        
-                        for idx, row in df_res.iterrows():
-                            with cols_detail[idx]:
-                                st.markdown(f"""
-                                <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                                    <h6 style="color: #1e3a8a; margin-top: 0;"><b>{row['Model']}</b></h6>
-                                    <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
-                                        <li>🔹 <b>Akurasi:</b> <code style="color: #1e3a8a;">{row['Accuracy']*100:.2f}%</code></li>
-                                        <li>🔹 <b>Precision:</b> <code>{row['Precision']*100:.2f}%</code></li>
-                                        <li>🔹 <b>Recall:</b> <code>{row['Recall']*100:.2f}%</code></li>
-                                        <li>🔹 <b>F1-Score:</b> <code>{row['F1-Score']*100:.2f}%</code></li>
-                                    </ul>
-                                </div>
-                                """, unsafe_allow_html=True)
-                else:
-                    st.warning("Silakan pilih minimal satu algoritma di atas.")
+                    fig_cm = px.imshow(
+                        res['cm'],
+                        text_auto=True,
+                        labels=dict(x="Prediksi", y="Aktual", color="Jumlah"),
+                        x=res['labels'],
+                        y=res['labels'],
+                        color_continuous_scale='Blues'
+                    )
+                    fig_cm.update_layout(margin=dict(l=0, r=0, t=10, b=0))
+                    st.plotly_chart(fig_cm, use_container_width=True)
+
+            # Kesimpulan
+            st.write("---")
+            st.markdown("##### **Kesimpulan Pengujian**")
+
+            best_idx = df_res['Accuracy'].idxmax()
+            best_row = df_res.loc[best_idx]
+
+            st.success(
+                f"**Model & Skenario Terbaik:** Dari seluruh kombinasi algoritma dan metode evaluasi yang diuji, "
+                f"model **{best_row['Model']}** pada **{best_row['Skenario']}** memiliki performa terbaik "
+                f"dengan tingkat akurasi sebesar **{best_row['Accuracy']*100:.2f}%**."
+            )
+
+            st.markdown("**Rincian Performa per Kombinasi Skenario & Algoritma:**")
+
+            n_cols = 2
+            rows_chunks = [results[i:i + n_cols] for i in range(0, len(results), n_cols)]
+            for chunk in rows_chunks:
+                cols_detail = st.columns(n_cols)
+                for idx, res in enumerate(chunk):
+                    with cols_detail[idx]:
+                        st.markdown(f"""
+                        <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 10px;">
+                            <h6 style="color: #1e3a8a; margin-top: 0;"><b>{res['Model']}</b> — {res['Skenario']}</h6>
+                            <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
+                                <li>🔹 <b>Akurasi:</b> <code style="color: #1e3a8a;">{res['Accuracy']*100:.2f}%</code></li>
+                                <li>🔹 <b>Precision:</b> <code>{res['Precision']*100:.2f}%</code></li>
+                                <li>🔹 <b>Recall:</b> <code>{res['Recall']*100:.2f}%</code></li>
+                                <li>🔹 <b>F1-Score:</b> <code>{res['F1-Score']*100:.2f}%</code></li>
+                            </ul>
+                        </div>
+                        """, unsafe_allow_html=True)
     else:
         st.warning("Status: Menunggu unggahan file dataset baru untuk pengujian.")
